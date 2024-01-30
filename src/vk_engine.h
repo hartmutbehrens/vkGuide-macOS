@@ -85,6 +85,8 @@ public:
 
 	DeletionQueue _mainDeletionQueue;
 
+	VmaAllocator _allocator;
+
 private:
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_swapchain();
