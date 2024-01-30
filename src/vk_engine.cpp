@@ -192,6 +192,7 @@ void VulkanEngine::cleanup()
   {
     //make sure the gpu has stopped doing its things
     vkDeviceWaitIdle(_device);
+    _mainDeletionQueue.flush();
 
     for (auto& frame : _frames)
     {
@@ -222,6 +223,9 @@ void VulkanEngine::draw()
 {
   // wait until the gpu has finished rendering the last frame. Timeout of 1 second
   VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, VK_TRUE, 1000000000));
+
+  get_current_frame()._deletionQueue.flush();
+
   VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
   //request image from the swapchain
   uint32_t swapchainImageIndex;

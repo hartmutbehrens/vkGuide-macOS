@@ -5,6 +5,26 @@
 
 #include <vk_types.h>
 
+#include <ranges>
+
+struct DeletionQueue
+{
+	std::deque<std::function<void()>> deletors;
+
+	void push_function(std::function<void()>&& function) {
+		deletors.push_back(function);
+	}
+
+	void flush() {
+		// reverse iterate the deletion queue to execute all the functions
+		for (auto & deletor : std::ranges::reverse_view(deletors)) {
+			deletor(); //call functors
+		}
+
+		deletors.clear();
+	}
+};
+
 struct FrameData {
 	VkCommandPool _commandPool;
 	VkCommandBuffer _mainCommandBuffer;
@@ -12,6 +32,8 @@ struct FrameData {
 	VkSemaphore _swapchainSemaphore;
 	VkSemaphore _renderSemaphore;
 	VkFence _renderFence;
+
+	DeletionQueue _deletionQueue;
 };
 
 constexpr unsigned int FRAME_OVERLAP = 2;
@@ -60,6 +82,8 @@ public:
 
 	VkQueue _graphicsQueue;
 	uint32_t _graphicsQueueFamily;
+
+	DeletionQueue _mainDeletionQueue;
 
 private:
 	void create_swapchain(uint32_t width, uint32_t height);
