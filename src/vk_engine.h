@@ -56,6 +56,7 @@ public:
 	//shuts down the engine
 	void cleanup();
 
+	void draw_background(VkCommandBuffer cmd);
 	//draw loop
 	void draw();
 
@@ -86,6 +87,10 @@ public:
 	DeletionQueue _mainDeletionQueue;
 
 	VmaAllocator _allocator;
+
+	//draw resources
+	AllocatedImage _drawImage;
+	VkExtent2D _drawExtent;
 
 private:
 	void create_swapchain(uint32_t width, uint32_t height);
