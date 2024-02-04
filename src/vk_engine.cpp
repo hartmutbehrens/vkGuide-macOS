@@ -170,6 +170,13 @@ void VulkanEngine::init_descriptors()
   drawImageWrite.pImageInfo = &imgInfo;
 
   vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
+
+  //add to deletion queues
+  _mainDeletionQueue.push_function([=]() {
+    vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout, nullptr);
+    globalDescriptorAllocator.clear_descriptors(_device);
+    globalDescriptorAllocator.destroy_pool(_device);
+  });
 }
 
 void VulkanEngine::init_vulkan()
@@ -197,6 +204,17 @@ void VulkanEngine::init_vulkan()
   features.dynamicRendering = true;
   features.synchronization2 = true;
 
+  // VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
+  // dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+  // dynamicRenderingFeatures.pNext = nullptr;
+  // dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  //
+  // VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features{};
+  // synchronization2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+  // synchronization2Features.pNext = &dynamicRenderingFeatures;
+  // synchronization2Features.synchronization2 = VK_TRUE;  // Enable the synchronization2 feature
+
+
   //vulkan 1.2 features
   VkPhysicalDeviceVulkan12Features features12{};
   features12.bufferDeviceAddress = true;
@@ -210,6 +228,7 @@ void VulkanEngine::init_vulkan()
                                        .add_required_extension("VK_KHR_synchronization2")
                                        .add_required_extension("VK_KHR_dynamic_rendering")
                                        .add_required_extension("VK_KHR_copy_commands2")
+                                       //.add_required_extension_features(&synchronization2Features)
                                        .set_required_features_12(features12)
                                        .set_required_features_13(features)
                                        .set_surface(_surface)
