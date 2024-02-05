@@ -174,7 +174,7 @@ void VulkanEngine::init_descriptors()
   //add to deletion queues
   _mainDeletionQueue.push_function([=]() {
     vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout, nullptr);
-    globalDescriptorAllocator.clear_descriptors(_device);
+    //globalDescriptorAllocator.clear_descriptors(_device);
     globalDescriptorAllocator.destroy_pool(_device);
   });
 }
