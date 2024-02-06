@@ -54,6 +54,9 @@ public:
 	//initializes everything in the engine
 	void init();
 
+  // send commands to the GPU without sync with swapchain or draw loop
+	void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
+
 	//shuts down the engine
 	void cleanup();
 
@@ -101,9 +104,15 @@ public:
 	VkPipeline _gradientPipeline;
 	VkPipelineLayout _gradientPipelineLayout;
 
+	// immediate submit structures
+	VkFence _immFence;
+	VkCommandBuffer _immCommandBuffer;
+	VkCommandPool _immCommandPool;
+
 private:
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_swapchain();
+	void init_imgui();
 	void init_pipelines();
 	void init_background_pipelines();
 	void init_descriptors();
