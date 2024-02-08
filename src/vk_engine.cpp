@@ -300,7 +300,7 @@ void VulkanEngine::init_vulkan()
   _instance = vkb_inst.instance;
   _debugMessenger = vkb_inst.debug_messenger;
 
-  volkLoadInstanceOnly(_instance);
+  volkLoadInstance(_instance);
 
   SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
@@ -349,7 +349,7 @@ void VulkanEngine::init_vulkan()
   _device = vkbDevice.device;
   _chosenGPU = physicalDevice.physical_device;
 
-  volkLoadDevice(_device);
+  //volkLoadDevice(_device);
 
   // use vkbootstrap to get a Graphics queue
   _graphicsQueue = vkbDevice.get_queue(vkb::QueueType::graphics).value();

@@ -10,9 +10,11 @@ add_subdirectory(fastgltf)
 add_subdirectory(fmt EXCLUDE_FROM_ALL)
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
 
-target_compile_definitions(vkbootstrap PRIVATE VK_USE_PLATFORM_MACOS_MVK)
 set(VOLK_STATIC_DEFINES "VK_USE_PLATFORM_MACOS_MVK")
 add_subdirectory(volk)
+target_include_directories(volk PUBLIC volk)
+
+target_compile_definitions(vkbootstrap PRIVATE VK_USE_PLATFORM_MACOS_MVK)
 
 target_sources(vkbootstrap PRIVATE 
   vkbootstrap/VkBootstrap.h
@@ -51,6 +53,7 @@ target_sources(imgui PRIVATE
   imgui/imgui_impl_sdl2.cpp
   )
 
-target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2)
+#target_link_libraries(imgui PUBLIC Vulkan::Vulkan SDL2::SDL2)
+target_link_libraries(imgui PUBLIC volk SDL2::SDL2)
 
 target_include_directories(stb_image INTERFACE stb_image)
