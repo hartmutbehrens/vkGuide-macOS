@@ -12,13 +12,16 @@ struct DeletionQueue
 {
 	std::deque<std::function<void()>> deletors;
 
-	void push_function(std::function<void()>&& function) {
+	void push_function(std::function<void()>&& function)
+	{
 		deletors.push_back(function);
 	}
 
-	void flush() {
+	void flush()
+	{
 		// reverse iterate the deletion queue to execute all the functions
-		for (auto & deletor : std::ranges::reverse_view(deletors)) {
+		for (auto& deletor : std::ranges::reverse_view(deletors))
+		{
 			deletor(); //call functors
 		}
 
@@ -26,7 +29,8 @@ struct DeletionQueue
 	}
 };
 
-struct FrameData {
+struct FrameData
+{
 	VkCommandPool _commandPool;
 	VkCommandBuffer _mainCommandBuffer;
 
@@ -39,7 +43,8 @@ struct FrameData {
 
 constexpr unsigned int FRAME_OVERLAP = 2;
 
-class VulkanEngine {
+class VulkanEngine
+{
 public:
 
 	bool _isInitialized{ false };
