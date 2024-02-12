@@ -41,6 +41,14 @@ struct FrameData
 	DeletionQueue _deletionQueue;
 };
 
+struct ComputePushConstants
+{
+	glm::vec4 data1;
+	glm::vec4 data2;
+	glm::vec4 data3;
+	glm::vec4 data4;
+};
+
 constexpr unsigned int FRAME_OVERLAP = 2;
 
 class VulkanEngine
@@ -121,7 +129,6 @@ private:
 	void destroy_swapchain();
 	void init_imgui();
 	void init_pipelines();
-	void init_background_pipelines();
 	void init_descriptors();
 	void init_vulkan();
 	void init_swapchain();
