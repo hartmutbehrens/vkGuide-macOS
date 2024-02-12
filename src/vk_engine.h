@@ -61,6 +61,8 @@ public:
 	void cleanup();
 
 	void draw_background(VkCommandBuffer cmd);
+
+	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
 	//draw loop
 	void draw();
 

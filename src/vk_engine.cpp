@@ -80,7 +80,7 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
 
   // submit command buffer to the queue and execute it.
   //  _renderFence will now block until the graphic commands finish execution
-  VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submit, _immFence));
+  VK_CHECK(vkQueueSubmit2KHR(_graphicsQueue, 1, &submit, _immFence));
 
   VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
 }
@@ -160,6 +160,7 @@ void VulkanEngine::init_imgui()
 
   // this initializes imgui for SDL
   ImGui_ImplSDL2_InitForVulkan(_window);
+  //ImGui_ImplVulkan_LoadFunctions(nullptr, nullptr);
 
   // this initializes imgui for Vulkan
   ImGui_ImplVulkan_InitInfo initInfo =
@@ -318,7 +319,6 @@ void VulkanEngine::init_vulkan()
   synchronization2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
   synchronization2Features.pNext = &dynamicRenderingFeatures;
   synchronization2Features.synchronization2 = VK_TRUE;  // Enable the synchronization2 feature
-
 
   //vulkan 1.2 features
   VkPhysicalDeviceVulkan12Features features12{};
@@ -511,6 +511,18 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
   vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
 }
 
+void VulkanEngine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
+{
+  VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(targetImageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+  VkRenderingInfo renderInfo = vkinit::rendering_info(_swapchainExtent, &colorAttachment, nullptr);
+
+  vkCmdBeginRenderingKHR(cmd, &renderInfo);
+
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
+  vkCmdEndRenderingKHR(cmd);
+}
+
 void VulkanEngine::draw()
 {
   // wait until the gpu has finished rendering the last frame. Timeout of 1 second
@@ -532,7 +544,6 @@ void VulkanEngine::draw()
 
   //begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
   VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
   _drawExtent.width = _drawImage.imageExtent.width;
   _drawExtent.height = _drawImage.imageExtent.height;
 
@@ -548,14 +559,22 @@ void VulkanEngine::draw()
   vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+  //> imgui_draw
   // execute a copy from the draw image into the swapchain
   vkutil::copy_image_to_image(cmd, _drawImage.image, _swapchainImages[swapchainImageIndex], _drawExtent, _swapchainExtent);
 
-  // set swapchain image layout to Present so we can show it on the screen
-  vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+  // set swapchain image layout to Attachment Optimal so we can draw it
+  vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  //draw imgui into the swapchain image
+  draw_imgui(cmd,  _swapchainImageViews[swapchainImageIndex]);
+
+  // set swapchain image layout to Present so we can draw it
+  vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
   //finalize the command buffer (we can no longer add commands, but it can now be executed)
   VK_CHECK(vkEndCommandBuffer(cmd));
+  //< imgui_draw
 
 
   //prepare the submission to the queue.
@@ -609,7 +628,9 @@ void VulkanEngine::run()
     {
       // close the window when user alt-f4s or clicks the X button
       if (e.type == SDL_QUIT)
+      {
         bQuit = true;
+      }
 
       if (e.type == SDL_WINDOWEVENT)
       {
@@ -622,6 +643,8 @@ void VulkanEngine::run()
           _stopRendering = false;
         }
       }
+      //send SDL event to imgui for handling
+      ImGui_ImplSDL2_ProcessEvent(&e);
     }
 
     // do not draw if we are minimized
@@ -632,6 +655,16 @@ void VulkanEngine::run()
       continue;
     }
 
+    // imgui new frame
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame(_window);
+    ImGui::NewFrame();
+    //some imgui UI to test
+    ImGui::ShowDemoWindow();
+    //make imgui calculate internal draw structures
+    ImGui::Render();
+
+    // our draw function
     draw();
   }
 }
