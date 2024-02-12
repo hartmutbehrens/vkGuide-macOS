@@ -49,6 +49,16 @@ struct ComputePushConstants
 	glm::vec4 data4;
 };
 
+struct ComputeEffect
+{
+	const char* name;
+
+	VkPipeline pipeline;
+	VkPipelineLayout layout;
+
+	ComputePushConstants data;
+};
+
 constexpr unsigned int FRAME_OVERLAP = 2;
 
 class VulkanEngine
@@ -110,6 +120,9 @@ public:
 	//draw resources
 	AllocatedImage _drawImage;
 	VkExtent2D _drawExtent;
+
+	std::vector<ComputeEffect> backgroundEffects;
+	int currentBackgroundEffect{0};
 
 	DescriptorAllocator globalDescriptorAllocator;
 
