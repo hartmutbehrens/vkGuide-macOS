@@ -273,8 +273,8 @@ void VulkanEngine::init_pipelines()
   _mainDeletionQueue.push_function([&]()
   {
     vkDestroyPipelineLayout(_device, _gradientPipelineLayout, nullptr);
-    vkDestroyPipeline(_device, sky.pipeline, nullptr);
-    vkDestroyPipeline(_device, gradient.pipeline, nullptr);
+    vkDestroyPipeline(_device, backgroundEffects[0].pipeline, nullptr);
+    vkDestroyPipeline(_device, backgroundEffects[1].pipeline, nullptr);
   });
 }
 
