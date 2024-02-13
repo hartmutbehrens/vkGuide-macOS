@@ -115,9 +115,9 @@ void VulkanEngine::destroy_swapchain()
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
 
   // destroy swapchain resources
-  for (int i = 0; i < _swapchainImageViews.size(); i++)
+  for (auto &swapchainImageView : _swapchainImageViews)
   {
-    vkDestroyImageView(_device, _swapchainImageViews[i], nullptr);
+    vkDestroyImageView(_device, swapchainImageView, nullptr);
   }
 }
 
@@ -149,12 +149,10 @@ void VulkanEngine::init_imgui()
     .pPoolSizes = pool_sizes
   };
 
-
   VkDescriptorPool imguiPool;
   VK_CHECK(vkCreateDescriptorPool(_device, &poolInfo, nullptr, &imguiPool));
 
   // 2: initialize imgui library
-
   // this initializes the core structures of imgui
   ImGui::CreateContext();
 
@@ -176,7 +174,6 @@ void VulkanEngine::init_imgui()
     .ColorAttachmentFormat = _swapchainImageFormat,
     .MSAASamples = VK_SAMPLE_COUNT_1_BIT
   };
-
   ImGui_ImplVulkan_Init(&initInfo, VK_NULL_HANDLE);
 
   // execute a gpu command to upload imgui font textures
@@ -199,19 +196,22 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_pipelines()
 {
-  VkPipelineLayoutCreateInfo computeLayout{};
-  computeLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-  computeLayout.pNext = nullptr;
-  computeLayout.pSetLayouts = &_drawImageDescriptorLayout;
-  computeLayout.setLayoutCount = 1;
+  VkPushConstantRange pushConstant
+  {
+    .offset = 0,
+    .size = sizeof(ComputePushConstants),
+    .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+  };
 
-  VkPushConstantRange pushConstant{};
-  pushConstant.offset = 0;
-  pushConstant.size = sizeof(ComputePushConstants) ;
-  pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-  computeLayout.pPushConstantRanges = &pushConstant;
-  computeLayout.pushConstantRangeCount = 1;
+  VkPipelineLayoutCreateInfo computeLayout
+  {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .pNext = nullptr,
+    .pSetLayouts = &_drawImageDescriptorLayout,
+    .setLayoutCount = 1,
+    .pPushConstantRanges = &pushConstant,
+    .pushConstantRangeCount = 1
+  };
 
   VK_CHECK(vkCreatePipelineLayout(_device, &computeLayout, nullptr, &_gradientPipelineLayout));
 
@@ -227,24 +227,29 @@ void VulkanEngine::init_pipelines()
     fmt::print("Error when building the compute shader \n");
   }
 
-  VkPipelineShaderStageCreateInfo stageinfo{};
-  stageinfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  stageinfo.pNext = nullptr;
-  stageinfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-  stageinfo.module = gradientShader;
-  stageinfo.pName = "main";
+  VkPipelineShaderStageCreateInfo stageinfo
+  {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .pNext = nullptr,
+    .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+    .module = gradientShader,
+    .pName = "main"
+  };
 
-  VkComputePipelineCreateInfo computePipelineCreateInfo{};
-  computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  computePipelineCreateInfo.pNext = nullptr;
-  computePipelineCreateInfo.layout = _gradientPipelineLayout;
-  computePipelineCreateInfo.stage = stageinfo;
+  VkComputePipelineCreateInfo computePipelineCreateInfo
+  {
+    .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+    .pNext = nullptr,
+    .layout = _gradientPipelineLayout,
+    .stage = stageinfo
+  };
 
-  ComputeEffect gradient;
-  gradient.layout = _gradientPipelineLayout;
-  gradient.name = "gradient";
-  gradient.data = {};
-
+  ComputeEffect gradient
+  {
+    .layout = _gradientPipelineLayout,
+    .name = "gradient",
+    .data = {}
+  };
   //default colors
   gradient.data.data1 = glm::vec4(1, 0, 0, 1);
   gradient.data.data2 = glm::vec4(0, 0, 1, 1);
@@ -254,10 +259,12 @@ void VulkanEngine::init_pipelines()
   //change the shader module only to create the sky shader
   computePipelineCreateInfo.stage.module = skyShader;
 
-  ComputeEffect sky;
-  sky.layout = _gradientPipelineLayout;
-  sky.name = "sky";
-  sky.data = {};
+  ComputeEffect sky
+  {
+    .layout = _gradientPipelineLayout,
+    .name = "sky",
+    .data = {}
+  };
   //default sky parameters
   sky.data.data1 = glm::vec4(0.1, 0.2, 0.4 ,0.97);
 
@@ -297,19 +304,23 @@ void VulkanEngine::init_descriptors()
   //allocate a descriptor set for our draw image
   _drawImageDescriptors = globalDescriptorAllocator.allocate(_device,_drawImageDescriptorLayout);
 
-  VkDescriptorImageInfo imgInfo{};
-  imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-  imgInfo.imageView = _drawImage.imageView;
+  VkDescriptorImageInfo imgInfo
+  {
+    .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    .imageView = _drawImage.imageView
+  };
 
-  VkWriteDescriptorSet drawImageWrite = {};
-  drawImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  drawImageWrite.pNext = nullptr;
+  VkWriteDescriptorSet drawImageWrite
+  {
+    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+    .pNext = nullptr,
 
-  drawImageWrite.dstBinding = 0;
-  drawImageWrite.dstSet = _drawImageDescriptors;
-  drawImageWrite.descriptorCount = 1;
-  drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  drawImageWrite.pImageInfo = &imgInfo;
+    .dstBinding = 0,
+    .dstSet = _drawImageDescriptors,
+    .descriptorCount = 1,
+    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+    .pImageInfo = &imgInfo
+  };
 
   vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
 
@@ -346,21 +357,27 @@ void VulkanEngine::init_vulkan()
   // features.dynamicRendering = true;
   // features.synchronization2 = true;
 
-  VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures{};
-  dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-  dynamicRenderingFeatures.pNext = nullptr;
-  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamicRenderingFeatures
+  {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+    .pNext = nullptr,
+    .dynamicRendering = VK_TRUE
+  };
 
-  VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features{};
-  synchronization2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-  synchronization2Features.pNext = &dynamicRenderingFeatures;
-  synchronization2Features.synchronization2 = VK_TRUE;  // Enable the synchronization2 feature
+  VkPhysicalDeviceSynchronization2FeaturesKHR synchronization2Features
+  {
+    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
+    .pNext = &dynamicRenderingFeatures,  // load dynamic rendering extension next
+    .synchronization2 = VK_TRUE  // Enable the synchronization2 feature
+  };
 
   //vulkan 1.2 features
-  VkPhysicalDeviceVulkan12Features features12{};
-  features12.bufferDeviceAddress = true;
-  features12.descriptorIndexing = true;
-  features12.pNext = &synchronization2Features;
+  VkPhysicalDeviceVulkan12Features features12
+  {
+    .bufferDeviceAddress = true,
+    .descriptorIndexing = true,
+    .pNext = &synchronization2Features  // load sync2 extension next
+  };
 
   //use vkbootstrap to select a gpu.
   //We want a gpu that can write to the SDL surface and supports vulkan 1.3 with the correct features
@@ -392,16 +409,20 @@ void VulkanEngine::init_vulkan()
   _graphicsQueueFamily = vkbDevice.get_queue_index(vkb::QueueType::graphics).value();
 
   // initialize the memory allocator
-  VmaVulkanFunctions vulkanFunctions = {};
-  vulkanFunctions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
-  vulkanFunctions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;
+  VmaVulkanFunctions vulkanFunctions
+  {
+    .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
+    .vkGetDeviceProcAddr = vkGetDeviceProcAddr
+  };
 
-  VmaAllocatorCreateInfo allocatorInfo = {};
-  allocatorInfo.physicalDevice = _chosenGPU;
-  allocatorInfo.device = _device;
-  allocatorInfo.instance = _instance;
-  allocatorInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
-  allocatorInfo.pVulkanFunctions = &vulkanFunctions;
+  VmaAllocatorCreateInfo allocatorInfo
+  {
+    .physicalDevice = _chosenGPU,
+    .device = _device,
+    .instance = _instance,
+    .flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT,
+    .pVulkanFunctions = &vulkanFunctions
+  };
   vmaCreateAllocator(&allocatorInfo, &_allocator);
 
   _mainDeletionQueue.push_function([&]() {
@@ -635,23 +656,21 @@ void VulkanEngine::draw()
   // this will put the image we just rendered to into the visible window.
   // we want to wait on the _renderSemaphore for that,
   // as its necessary that drawing commands have finished before the image is displayed to the user
-  VkPresentInfoKHR presentInfo = {};
-  presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-  presentInfo.pNext = nullptr;
-  presentInfo.pSwapchains = &_swapchain;
-  presentInfo.swapchainCount = 1;
-
-  presentInfo.pWaitSemaphores = &get_current_frame()._renderSemaphore;
-  presentInfo.waitSemaphoreCount = 1;
-
-  presentInfo.pImageIndices = &swapchainImageIndex;
+  VkPresentInfoKHR presentInfo
+  {
+    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+    .pNext = nullptr,
+    .pSwapchains = &_swapchain,
+    .swapchainCount = 1,
+    .pWaitSemaphores = &get_current_frame()._renderSemaphore,
+    .waitSemaphoreCount = 1,
+    .pImageIndices = &swapchainImageIndex
+  };
 
   VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
 
   //increase the number of frames drawn
   _frameNumber++;
-
-
 }
 
 void VulkanEngine::run()
