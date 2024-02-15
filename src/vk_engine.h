@@ -84,6 +84,7 @@ public:
 	void cleanup();
 
 	void draw_background(VkCommandBuffer cmd);
+	void draw_geometry(VkCommandBuffer cmd);
 
 	void draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView);
 	//draw loop
@@ -137,6 +138,9 @@ public:
 	VkCommandBuffer _immCommandBuffer;
 	VkCommandPool _immCommandPool;
 
+	VkPipelineLayout _trianglePipelineLayout;
+	VkPipeline _trianglePipeline;
+
 private:
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_swapchain();
@@ -147,4 +151,6 @@ private:
 	void init_swapchain();
 	void init_commands();
 	void init_sync_structures();
+	void init_background_pipelines();
+	void init_triangle_pipeline();
 };

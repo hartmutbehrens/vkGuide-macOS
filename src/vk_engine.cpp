@@ -196,93 +196,10 @@ void VulkanEngine::init_imgui()
 
 void VulkanEngine::init_pipelines()
 {
-  VkPushConstantRange pushConstant
-  {
-    .offset = 0,
-    .size = sizeof(ComputePushConstants),
-    .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
-  };
-
-  VkPipelineLayoutCreateInfo computeLayout
-  {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-    .pNext = nullptr,
-    .pSetLayouts = &_drawImageDescriptorLayout,
-    .setLayoutCount = 1,
-    .pPushConstantRanges = &pushConstant,
-    .pushConstantRangeCount = 1
-  };
-
-  VK_CHECK(vkCreatePipelineLayout(_device, &computeLayout, nullptr, &_gradientPipelineLayout));
-
-  VkShaderModule gradientShader;
-  if (!vkutil::load_shader_module("../shaders/gradient_color.comp.spv", _device, &gradientShader))
-  {
-    fmt::print("Error when building the compute shader \n");
-  }
-
-  VkShaderModule skyShader;
-  if (!vkutil::load_shader_module("../shaders/sky.comp.spv", _device, &skyShader))
-  {
-    fmt::print("Error when building the compute shader \n");
-  }
-
-  VkPipelineShaderStageCreateInfo stageinfo
-  {
-    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-    .pNext = nullptr,
-    .stage = VK_SHADER_STAGE_COMPUTE_BIT,
-    .module = gradientShader,
-    .pName = "main"
-  };
-
-  VkComputePipelineCreateInfo computePipelineCreateInfo
-  {
-    .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-    .pNext = nullptr,
-    .layout = _gradientPipelineLayout,
-    .stage = stageinfo
-  };
-
-  ComputeEffect gradient
-  {
-    .layout = _gradientPipelineLayout,
-    .name = "gradient",
-    .data = {}
-  };
-  //default colors
-  gradient.data.data1 = glm::vec4(1, 0, 0, 1);
-  gradient.data.data2 = glm::vec4(0, 0, 1, 1);
-
-  VK_CHECK(vkCreateComputePipelines(_device,VK_NULL_HANDLE,1,&computePipelineCreateInfo, nullptr, &gradient.pipeline));
-
-  //change the shader module only to create the sky shader
-  computePipelineCreateInfo.stage.module = skyShader;
-
-  ComputeEffect sky
-  {
-    .layout = _gradientPipelineLayout,
-    .name = "sky",
-    .data = {}
-  };
-  //default sky parameters
-  sky.data.data1 = glm::vec4(0.1, 0.2, 0.4 ,0.97);
-
-  VK_CHECK(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &sky.pipeline));
-
-  //add the 2 background effects into the array
-  backgroundEffects.push_back(gradient);
-  backgroundEffects.push_back(sky);
-
-  vkDestroyShaderModule(_device, gradientShader, nullptr);
-  vkDestroyShaderModule(_device, skyShader, nullptr);
-
-  _mainDeletionQueue.push_function([&]()
-  {
-    vkDestroyPipelineLayout(_device, _gradientPipelineLayout, nullptr);
-    vkDestroyPipeline(_device, backgroundEffects[0].pipeline, nullptr);
-    vkDestroyPipeline(_device, backgroundEffects[1].pipeline, nullptr);
-  });
+  //compute pipeline
+  init_background_pipelines();
+  //graphics pipeline
+  init_triangle_pipeline();
 }
 
 void VulkanEngine::init_descriptors()
@@ -522,6 +439,151 @@ void VulkanEngine::init_sync_structures()
   _mainDeletionQueue.push_function([=]() { vkDestroyFence(_device, _immFence, nullptr); });
 }
 
+void VulkanEngine::init_background_pipelines()
+{
+  VkPushConstantRange pushConstant
+  {
+    .offset = 0,
+    .size = sizeof(ComputePushConstants),
+    .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT
+  };
+
+  VkPipelineLayoutCreateInfo computeLayout
+  {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+    .pNext = nullptr,
+    .pSetLayouts = &_drawImageDescriptorLayout,
+    .setLayoutCount = 1,
+    .pPushConstantRanges = &pushConstant,
+    .pushConstantRangeCount = 1
+  };
+
+  VK_CHECK(vkCreatePipelineLayout(_device, &computeLayout, nullptr, &_gradientPipelineLayout));
+
+  VkShaderModule gradientShader;
+  if (!vkutil::load_shader_module("../shaders/gradient_color.comp.spv", _device, &gradientShader))
+  {
+    fmt::print("Error when building the compute shader \n");
+  }
+
+  VkShaderModule skyShader;
+  if (!vkutil::load_shader_module("../shaders/sky.comp.spv", _device, &skyShader))
+  {
+    fmt::print("Error when building the compute shader \n");
+  }
+
+  VkPipelineShaderStageCreateInfo stageinfo
+  {
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+    .pNext = nullptr,
+    .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+    .module = gradientShader,
+    .pName = "main"
+  };
+
+  VkComputePipelineCreateInfo computePipelineCreateInfo
+  {
+    .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+    .pNext = nullptr,
+    .layout = _gradientPipelineLayout,
+    .stage = stageinfo
+  };
+
+  ComputeEffect gradient
+  {
+    .layout = _gradientPipelineLayout,
+    .name = "gradient",
+    .data = {}
+  };
+  //default colors
+  gradient.data.data1 = glm::vec4(1, 0, 0, 1);
+  gradient.data.data2 = glm::vec4(0, 0, 1, 1);
+
+  VK_CHECK(vkCreateComputePipelines(_device,VK_NULL_HANDLE,1,&computePipelineCreateInfo, nullptr, &gradient.pipeline));
+
+  //change the shader module only to create the sky shader
+  computePipelineCreateInfo.stage.module = skyShader;
+
+  ComputeEffect sky
+  {
+    .layout = _gradientPipelineLayout,
+    .name = "sky",
+    .data = {}
+  };
+  //default sky parameters
+  sky.data.data1 = glm::vec4(0.1, 0.2, 0.4 ,0.97);
+
+  VK_CHECK(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr, &sky.pipeline));
+
+  //add the 2 background effects into the array
+  backgroundEffects.push_back(gradient);
+  backgroundEffects.push_back(sky);
+
+  vkDestroyShaderModule(_device, gradientShader, nullptr);
+  vkDestroyShaderModule(_device, skyShader, nullptr);
+
+  _mainDeletionQueue.push_function([&]()
+  {
+    vkDestroyPipelineLayout(_device, _gradientPipelineLayout, nullptr);
+    vkDestroyPipeline(_device, backgroundEffects[0].pipeline, nullptr);
+    vkDestroyPipeline(_device, backgroundEffects[1].pipeline, nullptr);
+  });
+}
+
+void VulkanEngine::init_triangle_pipeline()
+{
+  VkShaderModule triangleFragShader;
+  if (!vkutil::load_shader_module("../shaders/colored_triangle.frag.spv", _device, &triangleFragShader)) {
+    fmt::print("Error when building the triangle fragment shader module\n");
+  }
+
+  VkShaderModule triangleVertexShader;
+  if (!vkutil::load_shader_module("../shaders/colored_triangle.vert.spv", _device, &triangleVertexShader)) {
+    fmt::print("Error when building the triangle vertex shader module\n");
+  }
+
+  //build the pipeline layout that controls the inputs/outputs of the shader
+  //we are not using descriptor sets or other systems yet, so no need to use anything other than empty default
+  VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
+  VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_trianglePipelineLayout));
+
+  PipelineBuilder pipelineBuilder;
+
+  //use the triangle layout we created
+  pipelineBuilder._pipelineLayout = _trianglePipelineLayout;
+  //connecting the vertex and pixel shaders to the pipeline
+  pipelineBuilder.set_shaders(triangleVertexShader, triangleFragShader);
+  //it will draw triangles
+  pipelineBuilder.set_input_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  //filled triangles
+  pipelineBuilder.set_polygon_mode(VK_POLYGON_MODE_FILL);
+  //no backface culling
+  pipelineBuilder.set_cull_mode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+  //no multisampling
+  pipelineBuilder.set_multisampling_none();
+  //no blending
+  pipelineBuilder.disable_blending();
+  //no depth testing
+  pipelineBuilder.disable_depthtest();
+
+  //connect the image format we will draw into, from draw image
+  pipelineBuilder.set_color_attachment_format(_drawImage.imageFormat);
+  pipelineBuilder.set_depth_format(VK_FORMAT_UNDEFINED);
+
+  //finally build the pipeline
+  _trianglePipeline = pipelineBuilder.build_pipeline(_device);
+
+  //clean structures
+  vkDestroyShaderModule(_device, triangleFragShader, nullptr);
+  vkDestroyShaderModule(_device, triangleVertexShader, nullptr);
+
+  _mainDeletionQueue.push_function([&]() {
+    vkDestroyPipelineLayout(_device, _trianglePipelineLayout, nullptr);
+    vkDestroyPipeline(_device, _trianglePipeline, nullptr);
+  });
+
+}
+
 
 void VulkanEngine::cleanup()
 {
@@ -571,6 +633,45 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
   vkCmdDispatch(cmd, std::ceil(_drawExtent.width / 16.0), std::ceil(_drawExtent.height / 16.0), 1);
 }
 
+void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
+{
+  //begin a render pass  connected to our draw image
+  VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+
+  VkRenderingInfo renderInfo = vkinit::rendering_info(_drawExtent, &colorAttachment, nullptr);
+  vkCmdBeginRenderingKHR(cmd, &renderInfo);
+
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _trianglePipeline);
+
+  //set dynamic viewport and scissor
+  VkViewport viewport
+  {
+    .x = 0,
+    .y = 0,
+    .width = static_cast<float>(_drawExtent.width),
+    .height = static_cast<float>(_drawExtent.height),
+    .minDepth = 0.f,
+    .maxDepth = 1.f
+  };
+
+  vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+  VkRect2D scissor
+  {
+    .offset.x = 0,
+    .offset.y = 0,
+    .extent.width = _drawExtent.width,
+    .extent.height = _drawExtent.height
+  };
+
+  vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+  //launch a draw command to draw 3 vertices
+  vkCmdDraw(cmd, 3, 1, 0, 0);
+
+  vkCmdEndRenderingKHR(cmd);
+}
+
 void VulkanEngine::draw_imgui(VkCommandBuffer cmd, VkImageView targetImageView)
 {
   VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(targetImageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
@@ -615,8 +716,12 @@ void VulkanEngine::draw()
 
   draw_background(cmd);
 
-  //transition the draw image and the swapchain image into their correct transfer layouts
-  vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  draw_geometry(cmd);
+
+  //transtion the draw image and the swapchain image into their correct transfer layouts
+  vkutil::transition_image(cmd, _drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   vkutil::transition_image(cmd, _swapchainImages[swapchainImageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   //> imgui_draw
