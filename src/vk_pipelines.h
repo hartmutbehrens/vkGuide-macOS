@@ -10,8 +10,9 @@ namespace vkutil
 class PipelineBuilder
 {
 public:
-  void clear();
   PipelineBuilder();
+  ~PipelineBuilder() = default;
+
   VkPipeline build_pipeline(VkDevice device);
   void set_shaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
   void set_input_topology(VkPrimitiveTopology topology);

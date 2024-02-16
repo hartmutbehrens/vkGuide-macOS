@@ -49,22 +49,17 @@ bool vkutil::load_shader_module(const char* filePath, VkDevice device, VkShaderM
   return true;
 }
 
-void PipelineBuilder::clear()
-{
-  //clear all of the structs we need back to 0 with their correct stype
-  _inputAssembly = { .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-  _rasterizer = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-  _colorBlendAttachment = {};
-  _multisampling = { .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-  _pipelineLayout = {};
-  _depthStencil = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-  _renderInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-  _shaderStages.clear();
-}
-
 PipelineBuilder::PipelineBuilder()
+  : _inputAssembly{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO},
+    _rasterizer{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO},
+    _colorBlendAttachment{},
+    _multisampling{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO},
+    _pipelineLayout{},
+    _depthStencil{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO},
+    _renderInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO},
+    _colorAttachmentformat{}
 {
-  clear();
+  _shaderStages.clear();
 }
 
 VkPipeline PipelineBuilder::build_pipeline(VkDevice device)
