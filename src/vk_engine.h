@@ -142,8 +142,11 @@ public:
 	VkPipeline _trianglePipeline;
 
 private:
+	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	void create_swapchain(uint32_t width, uint32_t height);
+	void destroy_buffer(const AllocatedBuffer& buffer);
 	void destroy_swapchain();
+	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 	void init_imgui();
 	void init_pipelines();
 	void init_descriptors();

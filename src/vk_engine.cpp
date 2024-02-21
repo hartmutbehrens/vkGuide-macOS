@@ -85,6 +85,29 @@ void VulkanEngine::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& f
   VK_CHECK(vkWaitForFences(_device, 1, &_immFence, true, 9999999999));
 }
 
+AllocatedBuffer VulkanEngine::create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+{
+  // allocate buffer
+  VkBufferCreateInfo bufferInfo
+  {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+    .pNext = nullptr,
+    .size = allocSize,
+    .usage = usage
+  };
+
+  VmaAllocationCreateInfo vmaallocInfo
+  {
+    .usage = memoryUsage,
+    .flags = VMA_ALLOCATION_CREATE_MAPPED_BIT
+  };
+
+  AllocatedBuffer newBuffer{};
+  // allocate the buffer
+  VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &vmaallocInfo, &newBuffer.buffer, &newBuffer.allocation, &newBuffer.info));
+  return newBuffer;
+}
+
 void VulkanEngine::create_swapchain(uint32_t width, uint32_t height)
 {
   vkb::SwapchainBuilder swapchainBuilder{_chosenGPU, _device, _surface};
@@ -110,6 +133,11 @@ void VulkanEngine::create_swapchain(uint32_t width, uint32_t height)
   _swapchainImageViews = vkbSwapchain.get_image_views().value();
 }
 
+void VulkanEngine::destroy_buffer(const AllocatedBuffer& buffer)
+{
+  vmaDestroyBuffer(_allocator, buffer.buffer, buffer.allocation);
+}
+
 void VulkanEngine::destroy_swapchain()
 {
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
@@ -119,6 +147,74 @@ void VulkanEngine::destroy_swapchain()
   {
     vkDestroyImageView(_device, swapchainImageView, nullptr);
   }
+}
+
+GPUMeshBuffers VulkanEngine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices)
+{
+  const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+  const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+
+  GPUMeshBuffers newSurface{};
+
+  //create vertex buffer
+  newSurface.vertexBuffer = create_buffer(
+    vertexBufferSize,
+    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+    VMA_MEMORY_USAGE_GPU_ONLY);
+
+  //find the adress of the vertex buffer
+  VkBufferDeviceAddressInfo deviceAdressInfo
+  {
+    .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+    .buffer = newSurface.vertexBuffer.buffer
+  };
+  // this exposes GPU virtual addresses ("GPU pointer") directly to the application !!
+  // we can then send the pointer to the GPU and access it in the shader.
+  // https://docs.vulkan.org/samples/latest/samples/extensions/buffer_device_address/README.html
+  newSurface.vertexBufferAddress = vkGetBufferDeviceAddress(_device, &deviceAdressInfo);
+
+  //create index buffer
+  newSurface.indexBuffer = create_buffer(
+    indexBufferSize,
+    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+    VMA_MEMORY_USAGE_GPU_ONLY);
+
+  AllocatedBuffer staging = create_buffer(
+    vertexBufferSize + indexBufferSize,
+    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    VMA_MEMORY_USAGE_CPU_ONLY);
+
+  void* data = staging.allocation->GetMappedData();
+
+  // copy vertex buffer
+  memcpy(data, vertices.data(), vertexBufferSize);
+  // copy index buffer
+  memcpy((char*)data + vertexBufferSize, indices.data(), indexBufferSize);
+  // this can be made more efficient by doing upload on a background thread
+  immediate_submit([&](VkCommandBuffer cmd)
+  {
+    // now do "memcpy" on the GPU side from the staging buffer to vertex and index buffers
+    VkBufferCopy vertexCopy
+    {
+      .dstOffset = 0,
+      .srcOffset = 0,
+      .size = vertexBufferSize
+    };
+    vkCmdCopyBuffer(cmd, staging.buffer, newSurface.vertexBuffer.buffer, 1, &vertexCopy);
+
+    VkBufferCopy indexCopy
+    {
+      .dstOffset = 0,
+      .srcOffset = vertexBufferSize,
+      .size = indexBufferSize
+    };
+    vkCmdCopyBuffer(cmd, staging.buffer, newSurface.indexBuffer.buffer, 1, &indexCopy);
+  });
+
+  destroy_buffer(staging);
+
+  return newSurface;
+
 }
 
 void VulkanEngine::init_imgui()
