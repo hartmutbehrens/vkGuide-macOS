@@ -49,7 +49,7 @@ struct GPUMeshBuffers
 struct GPUDrawPushConstants
 {
     glm::mat4 worldMatrix;
-    VkDeviceAddress meshBufferAddress;
+    VkDeviceAddress vertexBufferAddress;
 };
 
 struct AllocatedImage
