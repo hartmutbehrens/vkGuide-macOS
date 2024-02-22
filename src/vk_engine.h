@@ -123,6 +123,7 @@ public:
 
 	//draw resources
 	AllocatedImage _drawImage;
+	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
 
 	std::vector<ComputeEffect> backgroundEffects;
