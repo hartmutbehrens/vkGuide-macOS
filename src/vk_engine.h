@@ -5,6 +5,7 @@
 
 #include <vk_types.h>
 #include <vk_descriptors.h>
+#include <vk_loader.h>
 
 #include <ranges>
 
@@ -93,6 +94,8 @@ public:
 	//run main loop
 	void run();
 
+	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+
 	FrameData& get_current_frame() { return _frames[_frameNumber % FRAME_OVERLAP]; };
 
 public:
@@ -146,13 +149,14 @@ public:
 
 	GPUMeshBuffers _rectangle;
 
+	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
+
 
 private:
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
 	void create_swapchain(uint32_t width, uint32_t height);
 	void destroy_buffer(const AllocatedBuffer& buffer);
 	void destroy_swapchain();
-	GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 	void init_imgui();
 	void init_pipelines();
 	void init_descriptors();

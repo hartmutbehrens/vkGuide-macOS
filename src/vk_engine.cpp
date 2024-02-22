@@ -15,6 +15,8 @@
 #include <chrono>
 #include <thread>
 
+#include <glm/gtx/transform.hpp>
+
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
@@ -774,6 +776,7 @@ void VulkanEngine::init_default_data()
   rect_indices[5] = 3;
 
   _rectangle = uploadMesh(rect_indices,rect_vertices);
+  _testMeshes = loadGltfMeshes(this,"../assets/basicmesh.glb").value();
 
 }
 
@@ -862,6 +865,7 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
   //launch a draw command to draw 3 vertices
   vkCmdDraw(cmd, 3, 1, 0, 0);
 
+  //draw rectangle
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, _meshPipeline);
 
   GPUDrawPushConstants push_constants
@@ -874,6 +878,25 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
   vkCmdBindIndexBuffer(cmd, _rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
   vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+  // draw monkeyhead
+  // 0 -> cube, 1-> sphere, 2->monkeyhead
+  push_constants.vertexBufferAddress = _testMeshes[2]->meshBuffers.vertexBufferAddress;
+  glm::mat4 view = glm::translate(glm::vec3{ 0,0,-5 });
+  // camera projection
+  // 10000 to near and 0.1 to far, so depth is reversed
+  // i.e. depth == 1 is the near plane, depth == 0 is the far plane
+  // this improves the quality of depth testing
+  glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)_drawExtent.width / (float)_drawExtent.height, 10000.f, 0.1f);
+
+  // invert the Y direction on projection matrix
+  // GLTF is like OpenGL which has positive y-direction up.
+  // Vulkan has positive y-direction down
+  projection[1][1] *= -1;
+  push_constants.worldMatrix = projection * view;
+
+  vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
+  vkCmdBindIndexBuffer(cmd, _testMeshes[2]->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(cmd, _testMeshes[2]->surfaces[0].count, 1, _testMeshes[2]->surfaces[0].startIndex, 0, 0);
 
   vkCmdEndRenderingKHR(cmd);
 }
