@@ -145,8 +145,6 @@ public:
 	VkPipelineLayout _meshPipelineLayout;
 	VkPipeline _meshPipeline;
 
-	GPUMeshBuffers _rectangle;
-
 	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
 
 

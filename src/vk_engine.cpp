@@ -721,31 +721,7 @@ void VulkanEngine::init_mesh_pipeline()
 
 void VulkanEngine::init_default_data()
 {
-  std::array<Vertex,4> rect_vertices;
-
-  rect_vertices[0].position = {0.5,-0.5, 0};
-  rect_vertices[1].position = {0.5,0.5, 0};
-  rect_vertices[2].position = {-0.5,-0.5, 0};
-  rect_vertices[3].position = {-0.5,0.5, 0};
-
-  rect_vertices[0].color = {0,0, 0,1};
-  rect_vertices[1].color = { 0.5,0.5,0.5 ,1};
-  rect_vertices[2].color = { 1,0, 0,1 };
-  rect_vertices[3].color = { 0,1, 0,1 };
-
-  std::array<uint32_t,6> rect_indices;
-
-  rect_indices[0] = 0;
-  rect_indices[1] = 1;
-  rect_indices[2] = 2;
-
-  rect_indices[3] = 2;
-  rect_indices[4] = 1;
-  rect_indices[5] = 3;
-
-  _rectangle = uploadMesh(rect_indices,rect_vertices);
   _testMeshes = loadGltfMeshes(this,"../assets/basicmesh.glb").value();
-
 }
 
 
@@ -832,26 +808,20 @@ void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 
   vkCmdSetScissor(cmd, 0, 1, &scissor);
 
+  // draw monkeyhead
+  // 0 -> cube, 1-> sphere, 2->monkeyhead
   GPUDrawPushConstants push_constants
   {
     .worldMatrix = glm::mat4{ 1.f },
-    .vertexBufferAddress = _rectangle.vertexBufferAddress
+    .vertexBufferAddress = _testMeshes[2]->meshBuffers.vertexBufferAddress
   };
 
-  vkCmdPushConstants(cmd, _meshPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(GPUDrawPushConstants), &push_constants);
-  vkCmdBindIndexBuffer(cmd, _rectangle.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-  vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
-  // draw monkeyhead
-  // 0 -> cube, 1-> sphere, 2->monkeyhead
-  push_constants.vertexBufferAddress = _testMeshes[2]->meshBuffers.vertexBufferAddress;
   glm::mat4 view = glm::translate(glm::vec3{ 0,0,-5 });
   // camera projection
   // 10000 to near and 0.1 to far, so depth is reversed
   // i.e. depth == 1 is the near plane, depth == 0 is the far plane
   // this improves the quality of depth testing
   glm::mat4 projection = glm::perspective(glm::radians(70.f), (float)_drawExtent.width / (float)_drawExtent.height, 10000.f, 0.1f);
-
   // invert the Y direction on projection matrix
   // GLTF is like OpenGL which has positive y-direction up.
   // Vulkan has positive y-direction down
