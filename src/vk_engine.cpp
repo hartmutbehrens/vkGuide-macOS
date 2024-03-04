@@ -18,6 +18,10 @@
 #include <glm/gtx/transform.hpp>
 
 #define VMA_IMPLEMENTATION
+//## -> token pasting operator. when used before __VA_ARGS__, it causes the preceding comma to be omitted
+//if __VA_ARGS__ is empty. This allows the macro to compile correctly even when no additional arguments are provided.
+//#define VMA_DEBUG_LOG(format, ...) do { printf(format, ##__VA_ARGS__); printf("\n"); } while(false)
+
 #include "vk_mem_alloc.h"
 
 #include "imgui.h"
@@ -215,6 +219,11 @@ GPUMeshBuffers VulkanEngine::uploadMesh(std::span<uint32_t> indices, std::span<V
   });
 
   destroy_buffer(staging);
+  _mainDeletionQueue.push_function([=]()
+  {
+    destroy_buffer(newSurface.indexBuffer);
+    destroy_buffer(newSurface.vertexBuffer);
+  });
 
   return newSurface;
 
