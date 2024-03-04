@@ -18,8 +18,8 @@
 #include <glm/gtx/transform.hpp>
 
 #define VMA_IMPLEMENTATION
-//## -> token pasting operator. when used before __VA_ARGS__, it causes the preceding comma to be omitted
-//if __VA_ARGS__ is empty. This allows the macro to compile correctly even when no additional arguments are provided.
+//## -> token pasting operator. when used before __VA_ARGS__, it causes the preceding comma to be omitted if __VA_ARGS__ is empty.
+//This allows the macro to compile correctly even when no additional arguments are provided.
 //#define VMA_DEBUG_LOG(format, ...) do { printf(format, ##__VA_ARGS__); printf("\n"); } while(false)
 
 #include "vk_mem_alloc.h"
@@ -706,7 +706,8 @@ void VulkanEngine::init_mesh_pipeline()
   //no multisampling
   pipelineBuilder.set_multisampling_none();
   //no blending
-  pipelineBuilder.disable_blending();
+  //pipelineBuilder.disable_blending();
+  pipelineBuilder.enable_blending_additive();
 
   //pipelineBuilder.disable_depthtest();
   pipelineBuilder.enable_depthtest(true, VK_COMPARE_OP_GREATER_OR_EQUAL);
