@@ -44,7 +44,7 @@ void VulkanEngine::init()
   // We initialize SDL and create a window with it.
   SDL_Init(SDL_INIT_VIDEO);
 
-  SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
+  SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 
   _window = SDL_CreateWindow(
     "Vulkan Engine",
@@ -864,23 +864,29 @@ void VulkanEngine::draw()
 
   get_current_frame()._deletionQueue.flush();
 
-  VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
+
   //request image from the swapchain
   uint32_t swapchainImageIndex;
-  VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex));
+  //VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex));
+  VkResult e = vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex);
+  if ((e == VK_ERROR_OUT_OF_DATE_KHR) || (e == VK_SUBOPTIMAL_KHR))
+  {
+    _resizeRequested = true;
+    return;
+  }
 
-  //naming it cmd for shorter writing
-  VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
+  _drawExtent.height = std::min(_swapchainExtent.height, _drawImage.imageExtent.height) * _renderScale;
+  _drawExtent.width= std::min(_swapchainExtent.width, _drawImage.imageExtent.width) * _renderScale;
 
+  VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
+  
   // now that we are sure that the commands finished executing, we can safely
   // reset the command buffer to begin recording again.
+  VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
   VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
   //begin the command buffer recording. We will use this command buffer exactly once, so we want to let vulkan know that
   VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-  _drawExtent.width = _drawImage.imageExtent.width;
-  _drawExtent.height = _drawImage.imageExtent.height;
-
   VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
   // transition our main draw image into general layout so we can write into it
@@ -946,10 +952,32 @@ void VulkanEngine::draw()
     .pImageIndices = &swapchainImageIndex
   };
 
-  VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
+  //VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
+  VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
+  if ((presentResult == VK_ERROR_OUT_OF_DATE_KHR) || (presentResult == VK_SUBOPTIMAL_KHR))
+  {
+    _resizeRequested = true;
+    return;
+  }
 
   //increase the number of frames drawn
   _frameNumber++;
+}
+
+void VulkanEngine::resize_swapchain()
+{
+  vkDeviceWaitIdle(_device);
+
+  destroy_swapchain();
+
+  int w, h;
+  SDL_GetWindowSize(_window, &w, &h);
+  _windowExtent.width = w;
+  _windowExtent.height = h;
+
+  create_swapchain(_windowExtent.width, _windowExtent.height);
+
+  _resizeRequested = false;
 }
 
 void VulkanEngine::run()
@@ -992,12 +1020,17 @@ void VulkanEngine::run()
       continue;
     }
 
+    if (_resizeRequested) {
+      resize_swapchain();
+    }
+
     // imgui new frame
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame(_window);
     ImGui::NewFrame();
     if (ImGui::Begin("background"))
     {
+      ImGui::SliderFloat("Render Scale", &_renderScale, 0.3f, 1.f);
       ComputeEffect& selected = backgroundEffects[currentBackgroundEffect];
 
       ImGui::Text("Selected effect: ", selected.name);

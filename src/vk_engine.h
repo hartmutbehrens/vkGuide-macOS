@@ -126,6 +126,8 @@ public:
 	AllocatedImage _depthImage;
 	VkExtent2D _drawExtent;
 
+	float _renderScale = 1.f;
+
 	std::vector<ComputeEffect> backgroundEffects;
 	int currentBackgroundEffect{0};
 
@@ -147,6 +149,8 @@ public:
 
 	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
 
+	bool _resizeRequested;
+
 
 private:
 	AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
@@ -164,4 +168,5 @@ private:
 	void init_triangle_pipeline();
 	void init_mesh_pipeline();
 	void init_default_data();
+	void resize_swapchain();
 };
