@@ -864,22 +864,22 @@ void VulkanEngine::draw()
 
   get_current_frame()._deletionQueue.flush();
 
-
   //request image from the swapchain
   uint32_t swapchainImageIndex;
   //VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex));
   VkResult e = vkAcquireNextImageKHR(_device, _swapchain, 1000000000, get_current_frame()._swapchainSemaphore, nullptr, &swapchainImageIndex);
-  if ((e == VK_ERROR_OUT_OF_DATE_KHR) || (e == VK_SUBOPTIMAL_KHR))
+  switch (e)
   {
-    _resizeRequested = true;
-    return;
+    case VK_SUBOPTIMAL_KHR: { _resizeRequested = true; break; }
+    case VK_ERROR_OUT_OF_DATE_KHR: { _resizeRequested = true; return; }
+    default: VK_CHECK(e);
   }
 
   _drawExtent.height = std::min(_swapchainExtent.height, _drawImage.imageExtent.height) * _renderScale;
   _drawExtent.width= std::min(_swapchainExtent.width, _drawImage.imageExtent.width) * _renderScale;
 
   VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
-  
+
   // now that we are sure that the commands finished executing, we can safely
   // reset the command buffer to begin recording again.
   VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
@@ -954,10 +954,11 @@ void VulkanEngine::draw()
 
   //VK_CHECK(vkQueuePresentKHR(_graphicsQueue, &presentInfo));
   VkResult presentResult = vkQueuePresentKHR(_graphicsQueue, &presentInfo);
-  if ((presentResult == VK_ERROR_OUT_OF_DATE_KHR) || (presentResult == VK_SUBOPTIMAL_KHR))
+  switch (presentResult)
   {
-    _resizeRequested = true;
-    return;
+    case VK_SUBOPTIMAL_KHR: { _resizeRequested = true; break; }
+    case VK_ERROR_OUT_OF_DATE_KHR: { _resizeRequested = true; return; }
+    default: VK_CHECK(presentResult);
   }
 
   //increase the number of frames drawn
