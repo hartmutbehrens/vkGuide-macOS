@@ -53,3 +53,18 @@ private:
   uint32_t setsPerPool{0};
 
 };
+
+struct DescriptorWriter
+{
+  // std::deque is guaranteed to keep pointers to elements valid, which we make use of
+  // (cppreference: insertion and deletion at either end of a deque never invalidates pointers or references to the rest of the elements)
+  std::deque<VkDescriptorImageInfo> imageInfos;
+  std::deque<VkDescriptorBufferInfo> bufferInfos;
+  std::vector<VkWriteDescriptorSet> writes;
+
+  void write_image(int binding,VkImageView image,VkSampler sampler , VkImageLayout layout, VkDescriptorType type);
+  void write_buffer(int binding,VkBuffer buffer,size_t size, size_t offset,VkDescriptorType type);
+
+  void clear();
+  void update_set(VkDevice device, VkDescriptorSet set);
+};
