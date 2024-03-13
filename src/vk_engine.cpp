@@ -329,25 +329,28 @@ void VulkanEngine::init_descriptors()
   //allocate a descriptor set for our draw image
   _drawImageDescriptors = globalDescriptorAllocator.allocate(_device,_drawImageDescriptorLayout);
 
-  VkDescriptorImageInfo imgInfo
-  {
-    .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
-    .imageView = _drawImage.imageView
-  };
-
-  VkWriteDescriptorSet drawImageWrite
-  {
-    .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-    .pNext = nullptr,
-
-    .dstBinding = 0,
-    .dstSet = _drawImageDescriptors,
-    .descriptorCount = 1,
-    .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-    .pImageInfo = &imgInfo
-  };
-
-  vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
+  // VkDescriptorImageInfo imgInfo
+  // {
+  //   .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+  //   .imageView = _drawImage.imageView
+  // };
+  //
+  // VkWriteDescriptorSet drawImageWrite
+  // {
+  //   .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+  //   .pNext = nullptr,
+  //
+  //   .dstBinding = 0,
+  //   .dstSet = _drawImageDescriptors,
+  //   .descriptorCount = 1,
+  //   .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+  //   .pImageInfo = &imgInfo
+  // };
+  //
+  // vkUpdateDescriptorSets(_device, 1, &drawImageWrite, 0, nullptr);
+  DescriptorWriter writer;
+  writer.write_image(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+  writer.update_set(_device,_drawImageDescriptors);
 
   //add to deletion queues
   _mainDeletionQueue.push_function([=]() {
