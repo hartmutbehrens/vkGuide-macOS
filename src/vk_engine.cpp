@@ -352,12 +352,40 @@ void VulkanEngine::init_descriptors()
   writer.write_image(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
   writer.update_set(_device,_drawImageDescriptors);
 
+  {
+    DescriptorLayoutBuilder builder;
+    builder.add_binding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    _gpuSceneDataDescriptorLayout = builder.build(_device, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  }
+
   //add to deletion queues
-  _mainDeletionQueue.push_function([=]() {
+  _mainDeletionQueue.push_function([=]()
+  {
     vkDestroyDescriptorSetLayout(_device, _drawImageDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(_device, _gpuSceneDataDescriptorLayout, nullptr);
     //globalDescriptorAllocator.clear_descriptors(_device);
     globalDescriptorAllocator.destroy_pool(_device);
   });
+
+  for (auto & frame : _frames)
+  {
+    // create a descriptor pool
+    std::vector<DescriptorAllocatorGrowable::PoolSizeRatio> frame_sizes =
+    {
+      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
+    };
+
+    frame._frameDescriptors = DescriptorAllocatorGrowable{};
+    frame._frameDescriptors.init(_device, 1000, frame_sizes);
+
+    _mainDeletionQueue.push_function([&]()
+    {
+      frame._frameDescriptors.destroy_pools(_device);
+    });
+  }
 }
 
 void VulkanEngine::init_vulkan()
@@ -744,8 +772,6 @@ void VulkanEngine::cleanup()
   {
     //make sure the gpu has stopped doing its things
     vkDeviceWaitIdle(_device);
-    _mainDeletionQueue.flush();
-
     for (auto& frame : _frames)
     {
       vkDestroyCommandPool(_device, frame._commandPool, nullptr);
@@ -754,7 +780,10 @@ void VulkanEngine::cleanup()
       vkDestroyFence(_device, frame._renderFence, nullptr);
       vkDestroySemaphore(_device, frame._renderSemaphore, nullptr);
       vkDestroySemaphore(_device ,frame._swapchainSemaphore, nullptr);
+
+      frame._deletionQueue.flush();
     }
+    _mainDeletionQueue.flush();
     destroy_swapchain();
 
     vkDestroySurfaceKHR(_instance, _surface, nullptr);
@@ -788,6 +817,27 @@ void VulkanEngine::draw_background(VkCommandBuffer cmd)
 
 void VulkanEngine::draw_geometry(VkCommandBuffer cmd)
 {
+
+  //allocate a new uniform buffer for the scene data
+  AllocatedBuffer gpuSceneDataBuffer = create_buffer(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+  //add it to the deletion queue of this frame so it gets deleted once its been used
+  get_current_frame()._deletionQueue.push_function([=]()
+  {
+    destroy_buffer(gpuSceneDataBuffer);
+  });
+
+  //write the buffer
+  GPUSceneData* sceneUniformData = (GPUSceneData*)gpuSceneDataBuffer.allocation->GetMappedData();
+  *sceneUniformData = sceneData;
+
+  //create a descriptor set that binds that buffer and update it
+  VkDescriptorSet globalDescriptor = get_current_frame()._frameDescriptors.allocate(_device, _gpuSceneDataDescriptorLayout);
+
+  DescriptorWriter writer;
+  writer.write_buffer(0, gpuSceneDataBuffer.buffer, sizeof(GPUSceneData), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+  writer.update_set(_device, globalDescriptor);
+
   //begin a render pass  connected to our draw image
   VkRenderingAttachmentInfo colorAttachment = vkinit::attachment_info(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
   VkRenderingAttachmentInfo depthAttachment = vkinit::depth_attachment_info(_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
@@ -866,6 +916,7 @@ void VulkanEngine::draw()
   VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, VK_TRUE, 1000000000));
 
   get_current_frame()._deletionQueue.flush();
+  get_current_frame()._frameDescriptors.clear_pools(_device);
 
   //request image from the swapchain
   uint32_t swapchainImageIndex;

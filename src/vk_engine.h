@@ -30,6 +30,16 @@ struct DeletionQueue
 	}
 };
 
+struct GPUSceneData
+{
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::mat4 viewproj;
+	glm::vec4 ambientColor;
+	glm::vec4 sunlightDirection; // w for sun power
+	glm::vec4 sunlightColor;
+};
+
 struct FrameData
 {
 	VkCommandPool _commandPool;
@@ -40,6 +50,7 @@ struct FrameData
 	VkFence _renderFence;
 
 	DeletionQueue _deletionQueue;
+	DescriptorAllocatorGrowable _frameDescriptors;
 };
 
 struct ComputePushConstants
@@ -150,6 +161,9 @@ public:
 	std::vector<std::shared_ptr<MeshAsset>> _testMeshes;
 
 	bool _resizeRequested;
+
+	GPUSceneData sceneData;
+	VkDescriptorSetLayout _gpuSceneDataDescriptorLayout;
 
 
 private:
